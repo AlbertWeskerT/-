@@ -300,3 +300,41 @@ Artifact GitHub Actions: `watch-together-windows-production`, run `29688587384`,
 ## Ограничения подтверждения
 
 Не заявляются как физически проверенные: качество реального голоса, реальный system audio, TURN relay, удалённое управление на двух компьютерах и качество работы из разных NAT/сетей. Они подготовлены в коде, но требуют сценариев из `MANUAL_TESTING.md` и соответствующего оборудования.
+
+## Дополнение: production Tauri WebSocket Origin
+
+Проверка 19 июля 2026 года установила production Origin Windows Tauri/WebView2: `http://tauri.localhost`. Старое значение Render `ALLOWED_ORIGINS` было:
+
+```text
+https://watch-together-p2p-ghost.onrender.com,https://albertweskert.github.io
+```
+
+Новое значение:
+
+```text
+https://watch-together-p2p-ghost.onrender.com,https://albertweskert.github.io,http://tauri.localhost
+```
+
+Причина отказа: сервер сравнивал заголовок `Origin` с allowlist точным совпадением и возвращал HTTP 403 на WebSocket upgrade до обработчика `connection`, потому что `http://tauri.localhost` отсутствовал в списке.
+
+Серверная origin policy теперь нормализует список, разделённый запятыми, удаляет пробелы, сравнивает нормализованные URL origins и применяет одну policy к `/ws`. В production-логах остаются только структурированные поля `origin`, `path`, `reason` и `close code` без query string, токенов и приватных данных.
+
+Фактическая production-проверка после Render deploy `dep-d9ee0us585fs73dunl70`:
+
+- Render state: `live`, `allowedOriginCount: 3`;
+- `http://tauri.localhost` → `upgrade-accepted`, path `/ws`;
+- создание комнаты → PASS;
+- `healthz` при desktop-origin host: `rooms: 1`, `connections: 1`;
+- GitHub Pages вход по шестизначному коду → PASS;
+- GitHub Pages вход по прямому invite URL → PASS;
+- `healthz` после двух browser joins: `rooms: 1`, `connections: 3`.
+
+Для GitHub Pages дополнительно исправлен разбор invite URL под project base path `/-/room/...`; добавлен regression test.
+
+Сетевой smoke использовал тот же production WSS и точный заголовок Origin Tauri, но не заменяет интерактивную проверку кнопки Retry в окне WebView2. Скачанный production `watch-together.exe` был запущен из artifact, однако изолированная среда Codex не создала доступное интерактивное WebView2-окно; поэтому GUI Retry пока не отмечен как PASS.
+
+Финальный GitHub Actions run: `29691433646` (`web-and-server` PASS, `desktop` PASS). Artifact `watch-together-windows-production`:
+
+- archive SHA-256: `C38E448AE7A1840CC984416D4A4EF7DD028B15C43FC2FFE76569BB5C05D350AB`;
+- `watch-together.exe` SHA-256: `69532E771504219BDA7617A039C8E75DEBB861C59DAC71FAA191F1EAB1A76390`;
+- локально: `C:\Users\Ghost\Documents\Codex\2026-07-18\task-md-readme-md-instrukciya-md\final-production-artifact\watch-together.exe`.
