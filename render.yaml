@@ -3,7 +3,7 @@ services:
     name: watch-together-p2p-ghost
     runtime: node
     rootDir: .
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && npm install --no-save --package-lock=false @rolldown/binding-linux-x64-gnu@1.1.5 && npm run build
     startCommand: npm run start --workspace signaling-server
     healthCheckPath: /healthz
     plan: free
