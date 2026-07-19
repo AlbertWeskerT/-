@@ -65,6 +65,28 @@ function log(level: 'info' | 'warn' | 'error', component: string, action: string
   else console.log(entry);
 }
 
+function normalizeOrigin(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  if (trimmed === 'null') return 'null';
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.origin;
+    if (parsed.protocol === 'tauri:' && parsed.hostname === 'localhost' && !parsed.port) return 'tauri://localhost';
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function requestPath(request: IncomingMessage): string {
+  try {
+    return new URL(request.url ?? '/', 'http://localhost').pathname;
+  } catch {
+    return '[invalid]';
+  }
+}
+
 function resolveStaticDir(explicit?: string): string {
   if (explicit) return explicit;
   if (process.env.STATIC_DIR) return process.env.STATIC_DIR;
@@ -161,9 +183,9 @@ export function createWatchTogetherServer(options: SignalingServerOptions = {}):
   const turnUrls = options.turnUrls ?? (process.env.TURN_URLS ?? '').split(',').map((url) => url.trim()).filter(Boolean);
   const turnSharedSecret = options.turnSharedSecret ?? process.env.TURN_SHARED_SECRET;
   const turnCredentialTtlSeconds = options.turnCredentialTtlSeconds ?? Number(process.env.TURN_CREDENTIAL_TTL_SECONDS || 3600);
-  const allowedOrigins = new Set(
-    options.allowedOrigins ?? (process.env.ALLOWED_ORIGINS ?? '').split(',').map((origin) => origin.trim()).filter(Boolean),
-  );
+  const configuredOrigins = options.allowedOrigins ?? (process.env.ALLOWED_ORIGINS ?? '').split(',');
+  const originValidationEnabled = configuredOrigins.some((origin) => origin.trim().length > 0);
+  const allowedOrigins = new Set(configuredOrigins.map((origin) => normalizeOrigin(origin)).filter((origin): origin is string => origin !== null));
   const connections = new Map<WebSocket, ConnState>();
   const socketsByParticipant = new Map<string, WebSocket>();
   const sessionsByHash = new Map<string, ResumeSession>();
@@ -344,13 +366,34 @@ export function createWatchTogetherServer(options: SignalingServerOptions = {}):
     server: httpServer,
     path: '/ws',
     maxPayload: MAX_SIGNALING_MESSAGE_BYTES,
-    verifyClient: ({ origin }, callback) => {
-      if (allowedOrigins.size === 0 || !origin || allowedOrigins.has(origin)) callback(true);
-      else callback(false, 403, 'Origin not allowed.');
+    verifyClient: ({ origin, req }, callback) => {
+      const normalizedOrigin = normalizeOrigin(origin);
+      const path = requestPath(req);
+      const allowed = !originValidationEnabled || (normalizedOrigin !== null && allowedOrigins.has(normalizedOrigin));
+      if (allowed) {
+        log('info', 'signaling', 'upgrade-accepted', { origin: normalizedOrigin, path });
+        callback(true);
+        return;
+      }
+      const reason = !origin ? 'missing-origin' : normalizedOrigin === null ? 'invalid-origin' : 'origin-not-allowed';
+      log('warn', 'signaling', 'upgrade-rejected', { origin: normalizedOrigin ?? '[invalid]', path, reason });
+      callback(false, 403, 'Origin not allowed.');
     },
   });
 
-  wss.on('connection', (ws) => {
+  httpServer.on('upgrade', (request) => {
+    const path = requestPath(request);
+    if (path === '/ws') return;
+    log('warn', 'signaling', 'upgrade-rejected', {
+      origin: normalizeOrigin(request.headers.origin) ?? (request.headers.origin ? '[invalid]' : null),
+      path,
+      reason: 'path-not-allowed',
+    });
+  });
+
+  wss.on('connection', (ws, request) => {
+    const connectionOrigin = normalizeOrigin(request.headers.origin);
+    const connectionPath = requestPath(request);
     const state: ConnState = {
       ws,
       isAlive: true,
@@ -527,7 +570,8 @@ export function createWatchTogetherServer(options: SignalingServerOptions = {}):
     ws.on('error', (error) => {
       log('warn', 'signaling', 'socket-error', { error: error.message });
     });
-    ws.on('close', () => {
+    ws.on('close', (code) => {
+      log('info', 'signaling', 'socket-closed', { origin: connectionOrigin, path: connectionPath, code });
       if (!stopping) scheduleDisconnect(state);
       connections.delete(ws);
     });
@@ -569,7 +613,7 @@ export function createWatchTogetherServer(options: SignalingServerOptions = {}):
     });
     const address = httpServer.address();
     const boundPort = typeof address === 'object' && address ? address.port : port;
-    log('info', 'server', 'listening', { port: boundPort, staticDir, originValidation: allowedOrigins.size > 0 });
+    log('info', 'server', 'listening', { port: boundPort, staticDir, originValidation: originValidationEnabled, allowedOriginCount: allowedOrigins.size });
     return boundPort;
   }
 
