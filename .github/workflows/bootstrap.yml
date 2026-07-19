@@ -1,0 +1,33 @@
+name: Bootstrap Watch Together source
+
+on:
+  push:
+    paths:
+      - p2p-app-source.tar.gz
+      - .github/workflows/bootstrap.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Import prepared source snapshot
+        shell: bash
+        run: |
+          if [[ ! -f p2p-app-source.tar.gz ]]; then
+            exit 0
+          fi
+
+          tar -xzf p2p-app-source.tar.gz
+          rm p2p-app-source.tar.gz
+
+          git config user.name "Watch Together Bootstrap"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Import Watch Together 0.2.0"
+          git push
