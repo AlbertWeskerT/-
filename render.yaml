@@ -11,7 +11,7 @@ services:
       - key: NODE_VERSION
         value: 22.12.0
       - key: ALLOWED_ORIGINS
-        value: https://watch-together-p2p-ghost.onrender.com
+        value: https://watch-together-p2p-ghost.onrender.com,https://albertweskert.github.io
       - key: RECONNECT_GRACE_MS
         value: 20000
       - key: MESSAGE_RATE_LIMIT_PER_MINUTE
