@@ -1,0 +1,24 @@
+{
+  "name": "p2p-signaling-server",
+  "version": "0.2.0",
+  "description": "Thin WebRTC signaling server: room registry + offer/answer/ICE relay only. No media, no accounts, no persistence.",
+  "main": "dist/signaling-server/src/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/signaling-server/src/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "test:unit": "tsx --test test/protocol.test.ts test/rooms.test.ts",
+    "test:integration": "tsx --test test/server.integration.test.ts"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}

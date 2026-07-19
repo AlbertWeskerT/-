@@ -1,0 +1,37 @@
+{
+  "name": "watch-together",
+  "version": "0.2.0",
+  "private": true,
+  "workspaces": [
+    "desktop-client",
+    "signaling-server"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "npm run dev --workspace desktop-client",
+    "dev:server": "npm run dev --workspace signaling-server",
+    "desktop:dev": "npm run desktop:dev --workspace desktop-client",
+    "build": "npm run build:server && npm run build:web",
+    "build:web": "npm run build --workspace desktop-client",
+    "build:server": "npm run build --workspace signaling-server",
+    "desktop:build": "npm run desktop:build --workspace desktop-client",
+    "desktop:package": "npm run desktop:package --workspace desktop-client",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "npm run test:unit --workspace signaling-server && npm run test:unit --workspace desktop-client",
+    "test:integration": "npm run test:integration --workspace signaling-server",
+    "test:e2e": "npm run build && node --test e2e/*.test.mjs",
+    "typecheck": "npm run typecheck --workspace signaling-server && npm run typecheck --workspace desktop-client",
+    "lint": "eslint . --max-warnings 0",
+    "diagnostics": "node scripts/diagnostics.mjs"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "playwright-core": "^1.61.1",
+    "typescript-eslint": "^8.46.1"
+  }
+}

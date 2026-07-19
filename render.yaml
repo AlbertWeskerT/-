@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: watch-together-p2p-ghost
+    runtime: node
+    rootDir: .
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start --workspace signaling-server
+    healthCheckPath: /healthz
+    plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: ALLOWED_ORIGINS
+        value: https://watch-together-p2p-ghost.onrender.com
+      - key: RECONNECT_GRACE_MS
+        value: 20000
+      - key: MESSAGE_RATE_LIMIT_PER_MINUTE
+        value: 180
+      - key: TURN_CREDENTIAL_TTL_SECONDS
+        value: 3600
+      - key: ROOM_TTL_MS
+        value: 21600000
+      - key: MAX_PARTICIPANTS
+        value: 4
+      - key: STUN_URLS
+        value: stun:stun.l.google.com:19302
+    autoDeploy: true
