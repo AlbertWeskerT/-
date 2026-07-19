@@ -34,3 +34,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
       - run: npm run desktop:package
+        env:
+          VITE_SIGNALING_URL: wss://watch-together-p2p-ghost.onrender.com/ws
+          VITE_PUBLIC_APP_URL: https://albertweskert.github.io/-/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: watch-together-windows-production
+          if-no-files-found: error
+          path: |
+            desktop-client/src-tauri/target/release/watch-together.exe
+            desktop-client/src-tauri/target/release/bundle/nsis/*.exe
