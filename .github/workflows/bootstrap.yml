@@ -25,7 +25,7 @@ jobs:
 
           tar -xzf p2p-app-source.tar.gz
           rm p2p-app-source.tar.gz
-          rm -f .github/workflows/ci.yml
+          find .github/workflows -maxdepth 1 -type f ! -name bootstrap.yml -delete
 
           git config user.name "Watch Together Bootstrap"
           git config user.email "actions@users.noreply.github.com"
