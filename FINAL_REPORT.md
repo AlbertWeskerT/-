@@ -1,7 +1,7 @@
 # Watch Together — итоговый отчёт
 
 Дата: 19 июля 2026 года
-Проект: `p2p-app`  
+Проект: `p2p-app`
 Версия: `0.2.0`
 
 ## Итог
@@ -16,6 +16,8 @@
 - production WebSocket: `wss://watch-together-p2p-ghost.onrender.com/ws`
 
 Render Blueprint `watch-together-p2p-ghost` подключён к ветке `main`, использует план Free и автоматически разворачивает новые коммиты. GitHub Pages собирается отдельным workflow и подключается к тому же Render signaling-server.
+
+Production Windows-сборка создаётся job `desktop` в GitHub Actions с уже встроенными Render WSS и GitHub Pages URL. Готовые `.exe` и NSIS installer публикуются как artifact `watch-together-windows-production`.
 
 ## Что было найдено
 
@@ -68,6 +70,8 @@ Render Blueprint `watch-together-p2p-ghost` подключён к ветке `ma
 | Render production Edge smoke | PASS |
 | GitHub Pages workflow | PASS |
 | GitHub Pages production Edge smoke | PASS |
+| GitHub `Build and test` run `29688587384` | PASS, `5m 45s` |
+| production Windows artifact | PASS, `watch-together-windows-production` |
 
 Production Edge smoke выполнялся двумя независимыми browser contexts. Фактически подтверждены: создание комнаты, вход второго участника, два участника в комнате, live fake-microphone WebRTC track, live fake-screen video track, доставка чата обоим клиентам и отсутствие page errors.
 
@@ -87,9 +91,11 @@ Production Edge smoke выполнялся двумя независимыми b
 | `cargo fmt -- --check` | PASS | Rust formatting |
 | `cargo check --locked` | PASS | Tauri/Rust build check |
 | `cargo test --locked -j 1` | PASS | native test profile |
-| `npm run desktop:package` | PASS | standalone exe + NSIS installer |
-| desktop smoke-test | PASS | процесс приложения запускался и оставался активным |
-| GitHub `Build and test` | PASS | Windows CI, включая desktop package |
+| исходный локальный `npm run desktop:package` | PASS | standalone exe + NSIS installer |
+| локальная повторная production-упаковка | FAIL (environment) | Rust `windows` crate исчерпал доступную память этого ПК; кодовый web-build до этого шага прошёл |
+| production `npm run desktop:package` в GitHub CI | PASS | `.exe` + NSIS 0.2.0 с production endpoints |
+| production desktop smoke-test | PASS | новый процесс приложения запускался и оставался активным после 5 секунд |
+| GitHub `Build and test` | PASS | Windows CI: web/server `1m 24s`, desktop `5m 42s` |
 | GitHub Pages deploy | PASS | опубликован artifact |
 | Docker image build | NOT RUN | Docker CLI отсутствует на локальной машине |
 | реальные устройства/TURN | NOT RUN | требуется физическое окружение и TURN account |
@@ -118,6 +124,9 @@ cargo fmt
 cargo fmt -- --check
 cargo test --locked -j 1
 npm run desktop:package
+$env:VITE_SIGNALING_URL='wss://watch-together-p2p-ghost.onrender.com/ws'
+$env:VITE_PUBLIC_APP_URL='https://albertweskert.github.io/-/'
+$env:CARGO_BUILD_JOBS='1'
 ```
 
 Production-проверки:
@@ -254,24 +263,26 @@ Standalone application:
 C:\Users\Ghost\Desktop\проєкт жизни\p2p-app\desktop-client\src-tauri\target\release\watch-together.exe
 ```
 
-- размер: `8,820,736` bytes
-- SHA-256: `FC5173EF59FC429D9D4B62C1760A649D88E094D83828605D383C8BC2875CFFA3`
+- размер: `8,708,608` bytes
+- SHA-256: `408813AC02FB10E33356BC8B25437B1BCF70770276F4AE731EC3CA6409238323`
 
 NSIS installer:
 
 ```text
-C:\Users\Ghost\Desktop\проєкт жизни\p2p-app\desktop-client\src-tauri\target\release\bundle\nsis\Watch Together_0.1.0_x64-setup.exe
+C:\Users\Ghost\Desktop\проєкт жизни\p2p-app\desktop-client\src-tauri\target\release\bundle\nsis\Watch Together_0.2.0_x64-setup.exe
 ```
 
-- размер: `1,942,807` bytes
-- SHA-256: `568F8074A7FA0AA46F417E7DBA951486828191096D8433DEEE7651C95BD6ED8A`
+- размер: `1,919,848` bytes
+- SHA-256: `BA6B4BB7C80689490EDCA2D36CE08C2B4653C68447068EF3B8CE67E894ED387E`
 
-Текущий desktop release собран до подключения production URL. При первом запуске в Desktop Setup нужно указать:
+Текущий desktop release собран GitHub Actions с готовыми production endpoints:
 
 ```text
 Signaling URL: wss://watch-together-p2p-ghost.onrender.com/ws
-Public app URL: https://watch-together-p2p-ghost.onrender.com
+Public app URL: https://albertweskert.github.io/-/
 ```
+
+Artifact GitHub Actions: `watch-together-windows-production`, run `29688587384`, archive SHA-256 `9D45496554AADB610F11A92EA6968AD95EEFE8C829B9B501433BB108BC93D366`.
 
 ## Что ещё требуется
 
