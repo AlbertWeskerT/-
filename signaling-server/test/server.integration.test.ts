@@ -12,9 +12,9 @@ interface Inbox {
 
 const inboxes = new WeakMap<WebSocket, Inbox>();
 
-function connect(url: string): Promise<WebSocket> {
+function connect(url: string, origin?: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(url, origin ? { origin } : undefined);
     const inbox: Inbox = { queue: [], waiters: [] };
     inboxes.set(ws, inbox);
     ws.on('message', (raw) => {
@@ -27,6 +27,25 @@ function connect(url: string): Promise<WebSocket> {
     ws.once('error', reject);
   });
 }
+
+test('origin policy normalizes configured origins and rejects missing or unlisted origins', async () => {
+  const application = createWatchTogetherServer({
+    port: 0,
+    allowedOrigins: [' https://albertweskert.github.io/some/path ', ' http://tauri.localhost/ '],
+  });
+  const port = await application.start();
+  const url = `ws://127.0.0.1:${port}/ws`;
+  try {
+    const browser = await connect(url, 'https://albertweskert.github.io');
+    const desktop = await connect(url, 'http://tauri.localhost');
+    await assert.rejects(connect(url, 'https://example.com'));
+    await assert.rejects(connect(url));
+    browser.close();
+    desktop.close();
+  } finally {
+    await application.stop();
+  }
+});
 
 function nextMessage(ws: WebSocket, timeoutMs = 2_000): Promise<ServerToClientMessage> {
   return new Promise((resolve, reject) => {
