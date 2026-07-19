@@ -114,7 +114,7 @@ export default function App() {
 
   const signalingRef = useRef<SignalingClient | null>(null);
   const pendingRoomActionRef = useRef<PendingRoomAction | null>(null);
-  const roomResponseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roomResponseTimerRef = useRef<number | null>(null);
   const peerManagerRef = useRef<PeerManager | null>(null);
   const roomRef = useRef<Room | null>(null);
   const selfIdRef = useRef('');
